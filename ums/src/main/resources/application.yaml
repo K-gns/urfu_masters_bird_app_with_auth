@@ -9,3 +9,6 @@ spring:
     url: jdbc:mysql://0.0.0.0:3306/ums?serverTimezone=UTC&useLegacyDatetimeCode=false
     username: root
     password: passw
+
+jwt:
+  secret: dGhpcy1pcy1hLXZlcnktc3Ryb25nLXNlY3JldC1rZXktZm9yLWp3dC1zaWduYXR1cmU=

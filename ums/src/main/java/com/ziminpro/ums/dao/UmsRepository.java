@@ -14,6 +14,8 @@ public interface UmsRepository {
 
     User findUserByID(UUID userId);
 
+    User findUserByEmailAndPassword(String email, String password);
+
     UUID createUser(User user);
 
 	int deleteUser(UUID userId);

@@ -8,8 +8,10 @@ import java.util.UUID;
 import com.ziminpro.ums.dao.UmsRepository;
 import com.ziminpro.ums.dtos.Constants;
 import com.ziminpro.ums.dtos.User;
+import com.ziminpro.ums.services.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,6 +25,9 @@ public class UserController {
 
     @Autowired
     private UmsRepository umsRepository;
+
+    @Autowired
+    private JwtService jwtService;
 
     Map<String, Object> response = new HashMap<>();
 
@@ -43,19 +48,40 @@ public class UserController {
     }
 
     @RequestMapping(method = RequestMethod.GET, path = "/users/user/{user-id}")
-    public Mono<ResponseEntity<Map<String, Object>>> getUser(@PathVariable(value = "user-id", required = true) String userId) {
-        User user = umsRepository.findUserByID(UUID.fromString(userId));
-        if (user.getId() == null) {
-            response.put(Constants.CODE, "404");
-            response.put(Constants.MESSAGE, "User have not been found");
-            response.put(Constants.DATA, new User());
-        } else {
-            response.put(Constants.CODE, "200");
-            response.put(Constants.MESSAGE, "User has been retrieved successfully");
-            response.put(Constants.DATA, user);
-        }
-        return Mono.just(ResponseEntity.ok().header(Constants.CONTENT_TYPE, Constants.APPLICATION_JSON)
-                .header(Constants.ACCEPT, Constants.APPLICATION_JSON).body(response));
+    public Mono<ResponseEntity<Map<String, Object>>> getUser(@PathVariable(value = "user-id") String userId) {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(ctx -> ctx.getAuthentication())
+                .flatMap(auth -> {
+                    String token = (String) auth.getCredentials();
+                    String currentUserId = jwtService.extractUserId(token);
+
+                    boolean isAdmin = auth.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+                    Map<String, Object> response = new HashMap<>();
+
+                    // доступно админу или только для своего профиля
+                    if (!isAdmin && !currentUserId.equals(userId)) {
+                        response.put(Constants.CODE, "403");
+                        response.put(Constants.MESSAGE, "Access Denied: You can only view your own profile");
+                        return Mono.just(ResponseEntity.status(403)
+                                .header(Constants.CONTENT_TYPE, Constants.APPLICATION_JSON)
+                                .body(response));
+                    }
+
+                    User user = umsRepository.findUserByID(UUID.fromString(userId));
+                    if (user.getId() == null) {
+                        response.put(Constants.CODE, "404");
+                        response.put(Constants.MESSAGE, "User have not been found");
+                        response.put(Constants.DATA, new User());
+                    } else {
+                        response.put(Constants.CODE, "200");
+                        response.put(Constants.MESSAGE, "User has been retrieved successfully");
+                        response.put(Constants.DATA, user);
+                    }
+                    return Mono.just(ResponseEntity.ok().header(Constants.CONTENT_TYPE, Constants.APPLICATION_JSON)
+                            .header(Constants.ACCEPT, Constants.APPLICATION_JSON).body(response));
+                });
     }
 
     @RequestMapping(method = RequestMethod.POST, path = "/users/user", consumes = Constants.APPLICATION_JSON)
@@ -75,18 +101,39 @@ public class UserController {
     }
 
     @RequestMapping(method = RequestMethod.DELETE, path = "/users/user/{user-id}")
-    public Mono<ResponseEntity<Map<String, Object>>> deleteUser(@PathVariable(value = "user-id", required = true) String userId) {
-        int result = umsRepository.deleteUser(UUID.fromString(userId));
-        if (result != 1) {
-            response.put(Constants.CODE, "500");
-            response.put(Constants.MESSAGE, "Error happened while deleting user");
-            response.put(Constants.DATA, userId);
-        } else {
-            response.put(Constants.CODE, "200");
-            response.put(Constants.MESSAGE, "User deleted");
-            response.put(Constants.DATA, userId.toString());
-        }
-        return Mono.just(ResponseEntity.ok().header(Constants.CONTENT_TYPE, Constants.APPLICATION_JSON)
-                .header(Constants.ACCEPT, Constants.APPLICATION_JSON).body(response));
+    public Mono<ResponseEntity<Map<String, Object>>> deleteUser(@PathVariable(value = "user-id") String userId) {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(ctx -> ctx.getAuthentication())
+                .flatMap(auth -> {
+                    String token = (String) auth.getCredentials();
+                    String currentUserId = jwtService.extractUserId(token);
+
+                    boolean isAdmin = auth.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+                    Map<String, Object> response = new HashMap<>();
+
+                    // удалять можно себя (либо админам)
+                    if (!isAdmin && !currentUserId.equals(userId)) {
+                        response.put(Constants.CODE, "403");
+                        response.put(Constants.MESSAGE, "Access Denied: You can only delete your own account");
+                        return Mono.just(ResponseEntity.status(403)
+                                .header(Constants.CONTENT_TYPE, Constants.APPLICATION_JSON)
+                                .body(response));
+                    }
+
+                    int result = umsRepository.deleteUser(UUID.fromString(userId));
+                    if (result != 1) {
+                        response.put(Constants.CODE, "500");
+                        response.put(Constants.MESSAGE, "Error happened while deleting user");
+                        response.put(Constants.DATA, userId);
+                    } else {
+                        response.put(Constants.CODE, "200");
+                        response.put(Constants.MESSAGE, "User deleted");
+                        response.put(Constants.DATA, userId.toString());
+                    }
+                    return Mono.just(ResponseEntity.ok().header(Constants.CONTENT_TYPE, Constants.APPLICATION_JSON)
+                            .header(Constants.ACCEPT, Constants.APPLICATION_JSON).body(response));
+                });
     }
 }

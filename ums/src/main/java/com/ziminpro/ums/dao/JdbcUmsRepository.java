@@ -106,4 +106,28 @@ public class JdbcUmsRepository implements UmsRepository {
         });
         return roles;
     }
+
+    @Override
+    public User findUserByEmailAndPassword(String email, String password) {
+        User user = new User();
+        List<Object> users = jdbcTemplate.query(Constants.GET_USER_BY_EMAIL_AND_PASSWORD,
+                (rs, rowNum) -> new User(DaoHelper.bytesArrayToUuid(rs.getBytes("users.id")), rs.getString("users.name"),
+                        rs.getString("users.email"), rs.getString("users.password"), rs.getInt("users.created"),
+                        Arrays.asList(new Roles(DaoHelper.bytesArrayToUuid(rs.getBytes("roles.id")),
+                                rs.getString("roles.name"), rs.getString("roles.description"))),
+                        new LastSession(rs.getInt("last_visit.in"), rs.getInt("last_visit.out"))),
+                email, password);
+        for (Object oUser : users) {
+            if (user.getId() == null) {
+                user.setId(((User) oUser).getId());
+                user.setName(((User) oUser).getName());
+                user.setEmail(((User) oUser).getEmail());
+                user.setPassword(((User) oUser).getPassword());
+                user.setCreated(((User) oUser).getCreated());
+                user.setLastSession(((User) oUser).getLastSession());
+            }
+            user.addRole(((User) oUser).getRoles().get(0));
+        }
+        return user;
+    }
 }

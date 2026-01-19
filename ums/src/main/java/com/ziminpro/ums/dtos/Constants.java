@@ -39,4 +39,9 @@ public class Constants {
     public static final String GET_ALL_ROLES = "SELECT * FROM " + TABLE_ROLES;
     public static final String DELETE_USER = "DELETE FROM " + TABLE_USERS + " WHERE `id` = (UUID_TO_BIN(?));";
     public static final String DELETE_LAST_VISIT = "DELETE FROM " + TABLE_LAST_VISIT + " WHERE `id` = (UUID_TO_BIN(?));";
+    public static final String GET_USER_BY_EMAIL_AND_PASSWORD = "SELECT * FROM " + TABLE_USERS + " LEFT JOIN " + TABLE_USERS_ROLES
+            + " ON " + TABLE_USERS_ROLES + ".`users_id` = " + TABLE_USERS + ".`id` LEFT JOIN " + TABLE_ROLES + " ON "
+            + TABLE_USERS_ROLES + ".`roles_id` = " + TABLE_ROLES + ".`id` LEFT JOIN " + TABLE_LAST_VISIT + " ON "
+            + TABLE_USERS + ".`last_visit_id` = " + TABLE_LAST_VISIT + ".`id` WHERE " + TABLE_USERS
+            + ".`email`=? AND " + TABLE_USERS + ".`password`=?;";
 }

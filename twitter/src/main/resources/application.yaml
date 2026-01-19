@@ -16,3 +16,5 @@ ums:
   paths:
     user: /users/user
 
+jwt:
+  secret: dGhpcy1pcy1hLXZlcnktc3Ryb25nLXNlY3JldC1rZXktZm9yLWp3dC1zaWduYXR1cmU=
