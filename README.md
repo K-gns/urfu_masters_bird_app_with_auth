@@ -5,6 +5,8 @@ This is a conceptual representation of the Twitter (X) application created for l
 3. Impelementation
 4. Securing applications
 
+**Upd: added basic auth with jwt tokens**
+
 ### Build & Run
 
 To build the project, follow the steps below.
